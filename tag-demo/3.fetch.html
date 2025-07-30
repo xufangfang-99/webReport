@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        const originalFetch = window.fetch;
+        window.fetch =  function(...args){
+            return originalFetch(...args).then((response) => {
+                if(!response.ok){
+                    throw new Error(`HTTP error! Status: ${response.status}`)
+                }
+                return response;
+            })
+        }
+
+
+        window.onunhandledrejection = function(event){
+            const {reason} = event;
+            console.log(reason);
+            return false;
+        }
+
+
+        window.fetch("https://cnodejs.org/api/v1/topicsvvvvv",{method:"GET"})
+        .then((res)=>res())
+        .then((res)=>console.log(res))
+    </script>
+</body>
+</html>
