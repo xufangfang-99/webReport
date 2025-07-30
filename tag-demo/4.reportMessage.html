@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全局埋点工具 SDK</title>
+    <style>
+        body {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .test-area {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .btn {
+            margin: 10px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        input, select {
+            margin: 5px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .log-area {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>全局埋点工具 SDK 演示</h1>
+    
+    <div class="test-area">
+        <h2>测试区域</h2>
+        <button class="btn" data-track="button-click" data-module="test">点击按钮</button>
+        <button class="btn" data-track="special-action" data-user-id="123">特殊操作</button>
+        
+        <div class="form-group">
+            <input type="text" placeholder="输入框测试" data-track="input-focus" data-module="form">
+            <select data-track="select-change" data-module="form">
+                <option value="">请选择</option>
+                <option value="1">选项1</option>
+                <option value="2">选项2</option>
+            </select>
+        </div>
+        
+        <div data-track="div-click" data-module="content" style="padding: 10px; background: #e9ecef; cursor: pointer;">
+            可点击的DIV区域
+        </div>
+    </div>
+
+    <div class="test-area">
+        <h2>控制台日志</h2>
+        <div id="logArea" class="log-area"></div>
+        <button onclick="clearLogs()">清空日志</button>
+    </div>
+
+    <script>
+        // 全局埋点工具 SDK
+        class TrackingSDK {
+            constructor(options = {}) {
+                this.config = {
+                    // 基础配置
+                    debug: options.debug || false,
+                    autoTrack: options.autoTrack !== false, // 默认开启自动埋点
+                    reportUrl: options.reportUrl || '/api/track',
+                    batchSize: options.batchSize || 10,
+                    timeout: options.timeout || 5000,
+                    
+                    // 用户信息
+                    userId: options.userId || null,
+                    sessionId: options.sessionId || this.generateSessionId(),
+                    
+                    // 页面信息
+                    pageId: options.pageId || this.getPageId(),
+                    
+                    // 过滤配置
+                    ignoreElements: options.ignoreElements || ['script', 'style', 'meta', 'title'],
+                    trackAttributes: options.trackAttributes || ['data-track', 'id', 'class']
+                };
+                
+                // 事件队列
+                this.eventQueue = [];
+                this.isReporting = false;
+                
+                // 初始化
+                this.init();
+            }
+            
+            // 初始化方法
+            init() {
+                if (this.config.autoTrack) {
+                    this.setupAutoTracking();
+                }
+                this.setupErrorTracking();
+                this.setupPerformanceTracking();
+                this.setupPageTracking();
+                
+                this.log('TrackingSDK 初始化完成', this.config);
+            }
+            
+            // 设置自动埋点
+            setupAutoTracking() {
+                // 全局点击事件监听
+                document.addEventListener('click', (event) => {
+                    this.handleAutoTrack('click', event);
+                }, true);
+                
+                // 输入框聚焦事件
+                document.addEventListener('focus', (event) => {
+                    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                        this.handleAutoTrack('focus', event);
+                    }
+                }, true);
+                
+                // 选择框变化事件
+                document.addEventListener('change', (event) => {
+                    if (event.target.tagName === 'SELECT' || event.target.type === 'checkbox' || event.target.type === 'radio') {
+                        this.handleAutoTrack('change', event);
+                    }
+                }, true);
+            }
+            
+            // 处理自动埋点
+            handleAutoTrack(eventType, event) {
+                const target = event.target;
+                
+                // 检查是否需要忽略
+                if (this.shouldIgnoreElement(target)) {
+                    return;
+                }
+                
+                const trackData = this.extractTrackData(target, event);
+                
+                // 只有明确标记了埋点属性的元素才进行埋点
+                if (target.hasAttribute('data-track') || this.config.debug) {
+                    this.track(eventType, trackData);
+                }
+            }
+            
+            // 提取埋点数据
+            extractTrackData(target, event) {
+                const data = {
+                    // 基础信息
+                    timestamp: Date.now(),
+                    url: window.location.href,
+                    title: document.title,
+                    userAgent: navigator.userAgent,
+                    
+                    // 元素信息
+                    tagName: target.tagName.toLowerCase(),
+                    xpath: this.getXPath(event),
+                    elementId: target.id || null,
+                    className: target.className || null,
+                    innerText: target.innerText ? target.innerText.substring(0, 100) : null,
+                    
+                    // 自定义属性
+                    trackId: target.getAttribute('data-track') || null,
+                    module: target.getAttribute('data-module') || null,
+                    
+                    // 位置信息
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    
+                    // 页面滚动位置
+                    scrollX: window.pageXOffset,
+                    scrollY: window.pageYOffset,
+                };
+                
+                // 提取所有data-*属性
+                Array.from(target.attributes).forEach(attr => {
+                    if (attr.name.startsWith('data-')) {
+                        data[attr.name] = attr.value;
+                    }
+                });
+                
+                return data;
+            }
+            
+            // 获取元素XPath
+            getXPath(event) {
+                const paths = event.path || event.composedPath();
+                return paths
+                    .filter(item => item.tagName)
+                    .map(item => {
+                        let selector = item.tagName.toLowerCase();
+                        if (item.id) {
+                            selector += `#${item.id}`;
+                        } else if (item.className) {
+                            const classes = item.className.split(' ').filter(c => c).slice(0, 2);
+                            if (classes.length > 0) {
+                                selector += `.${classes.join('.')}`;
+                            }
+                        }
+                        return selector;
+                    })
+                    .reverse()
+                    .join(' > ');
+            }
+            
+            // 检查是否应该忽略元素
+            shouldIgnoreElement(element) {
+                const tagName = element.tagName.toLowerCase();
+                return this.config.ignoreElements.includes(tagName);
+            }
+            
+            // 手动埋点方法
+            track(eventName, data = {}) {
+                const eventData = {
+                    eventName,
+                    ...data,
+                    userId: this.config.userId,
+                    sessionId: this.config.sessionId,
+                    pageId: this.config.pageId,
+                    timestamp: data.timestamp || Date.now()
+                };
+                
+                this.log('埋点事件:', eventData);
+                
+                // 添加到队列
+                this.eventQueue.push(eventData);
+                
+                // 批量上报
+                if (this.eventQueue.length >= this.config.batchSize) {
+                    this.report();
+                }
+            }
+            
+            // 设置错误监控
+            setupErrorTracking() {
+                // JavaScript错误
+                window.onerror = (msg, url, line, col, error) => {
+                    this.track('javascript_error', {
+                        message: msg,
+                        filename: url,
+                        line,
+                        column: col,
+                        stack: error ? error.stack : null
+                    });
+                };
+                
+                // Promise错误
+                window.addEventListener('unhandledrejection', (event) => {
+                    this.track('promise_error', {
+                        reason: event.reason,
+                        promise: event.promise
+                    });
+                });
+            }
+            
+            // 设置性能监控
+            setupPerformanceTracking() {
+                // 页面加载完成后收集性能数据
+                window.addEventListener('load', () => {
+                    setTimeout(() => {
+                        const perfData = this.getPerformanceData();
+                        if (perfData) {
+                            this.track('page_performance', perfData);
+                        }
+                    }, 0);
+                });
+            }
+            
+            // 获取性能数据
+            getPerformanceData() {
+                if (!window.performance || !window.performance.timing) {
+                    return null;
+                }
+                
+                const timing = window.performance.timing;
+                const navigationStart = timing.navigationStart;
+                
+                return {
+                    // 页面加载时间
+                    loadTime: timing.loadEventEnd - navigationStart,
+                    // DOM解析时间
+                    domParseTime: timing.domContentLoadedEventEnd - timing.domLoading,
+                    // 白屏时间
+                    whiteScreenTime: timing.responseStart - navigationStart,
+                    // 首屏时间
+                    firstScreenTime: timing.loadEventEnd - navigationStart
+                };
+            }
+            
+            // 设置页面跟踪
+            setupPageTracking() {
+                // 页面进入
+                this.track('page_enter', {
+                    referrer: document.referrer
+                });
+                
+                // 页面离开
+                window.addEventListener('beforeunload', () => {
+                    this.track('page_leave', {
+                        stayTime: Date.now() - this.pageEnterTime
+                    });
+                    this.report(true); // 强制上报
+                });
+                
+                this.pageEnterTime = Date.now();
+            }
+            
+            // 上报数据
+            report(force = false) {
+                if (this.isReporting && !force) {
+                    return;
+                }
+                
+                if (this.eventQueue.length === 0) {
+                    return;
+                }
+                
+                this.isReporting = true;
+                const events = [...this.eventQueue];
+                this.eventQueue = [];
+                
+                this.log('上报数据:', events);
+                
+                // 模拟上报（实际项目中替换为真实的上报逻辑）
+                if (this.config.debug) {
+                    console.log('📊 埋点数据上报:', events);
+                    this.isReporting = false;
+                    return;
+                }
+                
+                // 真实上报逻辑
+                fetch(this.config.reportUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        events,
+                        timestamp: Date.now()
+                    })
+                }).then(response => {
+                    this.log('上报成功:', response);
+                }).catch(error => {
+                    this.log('上报失败:', error);
+                    // 上报失败时重新加入队列
+                    this.eventQueue.unshift(...events);
+                }).finally(() => {
+                    this.isReporting = false;
+                });
+            }
+            
+            // 工具方法
+            generateSessionId() {
+                return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            }
+            
+            getPageId() {
+                return window.location.pathname.replace(/\//g, '_') || 'index';
+            }
+            
+            log(...args) {
+                if (this.config.debug) {
+                    console.log('[TrackingSDK]', ...args);
+                    
+                    // 显示在页面上
+                    const logArea = document.getElementById('logArea');
+                    if (logArea) {
+                        const logEntry = document.createElement('div');
+                        logEntry.innerHTML = `[${new Date().toLocaleTimeString()}] ${args.map(arg => 
+                            typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+                        ).join(' ')}`;
+                        logArea.appendChild(logEntry);
+                        logArea.scrollTop = logArea.scrollHeight;
+                    }
+                }
+            }
+            
+            // 公共API
+            setUserId(userId) {
+                this.config.userId = userId;
+            }
+            
+            setConfig(newConfig) {
+                this.config = { ...this.config, ...newConfig };
+            }
+            
+            // 手动触发上报
+            flush() {
+                this.report(true);
+            }
+        }
+        
+        // 初始化SDK
+        window.TrackingSDK = TrackingSDK;
+        
+        // 创建实例
+        const tracker = new TrackingSDK({
+            debug: true,
+            userId: 'user_123',
+            autoTrack: true
+        });
+        
+        // 暴露到全局
+        window.tracker = tracker;
+        
+        // 清空日志函数
+        function clearLogs() {
+            const logArea = document.getElementById('logArea');
+            if (logArea) {
+                logArea.innerHTML = '';
+            }
+        }
+        
+        // 演示手动埋点
+        setTimeout(() => {
+            tracker.track('custom_event', {
+                action: 'demo_load',
+                value: 'SDK演示页面加载完成'
+            });
+        }, 1000);
+    </script>
+</body>
+</html>
