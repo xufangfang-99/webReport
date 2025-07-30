@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=\, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- <img src="https://www.baidu.com" /> -->
+    <script>
+        const reportByFetchTest = async (message) => {
+             // 使用httpbin.org作为测试服务器，支持各种HTTP方法
+            const dsn_url = 'https://httpbin.org/post';
+            
+            try {
+                const response = await fetch(dsn_url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        timestamp: Date.now(),
+                        userAgent: navigator.userAgent,
+                        url: window.location.href
+                    }),
+                    mode: 'cors',
+                    credentials: 'omit'
+                });
+                
+                if (response.ok) {
+                    console.log('✅ Fetch上报成功');
+                    const result = await response.json();
+                    console.log('📋 服务器响应:', result);
+                    return result;
+                } else {
+                    console.error('❌ Fetch上报失败:', response.status);
+                }
+            } catch (error) {
+                console.error('❌ Fetch上报错误:', error);
+                throw error;
+            }
+        }
+        reportByFetchTest()
+    </script>
+</body>
+</html>

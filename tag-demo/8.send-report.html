@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SendBeacon Demo - 修复版</title>
+</head>
+<body>
+    <h1>SendBeacon 上报示例</h1>
+    <button onclick="testBeaconReport()">测试 Beacon 上报</button>
+    <p>打开开发者工具查看网络请求和控制台输出</p>
+
+    <script>
+        const dsn_url = 'https://httpbin.org/post';
+        
+        // 添加缺失的 reportByImage 函数
+        const reportByImage = (message) => {
+            const img = new Image();
+            img.src = `https://httpbin.org/get?message=${encodeURIComponent(message)}&timestamp=${Date.now()}&method=image_fallback`;
+            
+            img.onload = () => {
+                console.log('✅ 图片上报成功 (备用方案):', message);
+            };
+            img.onerror = () => {
+                console.log('❌ 图片上报失败 (备用方案):', message);
+            };
+        };
+
+        const reportByBeacon = (message) => {
+            // 检查浏览器是否支持sendBeacon
+            if (!navigator.sendBeacon) {
+                console.log('浏览器不支持sendBeacon，使用图片上报');
+                reportByImage(message);
+                return;
+            }
+            
+            const data = JSON.stringify({
+                message: message,
+                timestamp: Date.now(),
+                userAgent: navigator.userAgent,
+                url: window.location.href
+            });
+            
+            // 发送数据
+            const success = navigator.sendBeacon(dsn_url, data);
+            
+            if (success) {
+                console.log('✅ Beacon上报已发送:', message);
+            } else {
+                console.log('❌ Beacon上报失败，使用备用方案');
+                reportByImage(message);
+            }
+        };
+
+        // 测试函数
+        const testBeaconReport = () => {
+            reportByBeacon('手动测试 Beacon 上报');
+        };
+
+        // 页面卸载时自动上报
+        window.addEventListener('beforeunload', () => {
+            reportByBeacon('页面卸载上报');
+        });
+
+        // 页面隐藏时上报（适用于移动端）
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                reportByBeacon('页面隐藏上报');
+            }
+        });
+
+        console.log('SendBeacon demo 已加载，支持情况:', !!navigator.sendBeacon);
+    </script>
+</body>
+</html>
