@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=\, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- <img src="https://www.baidu.com" /> -->
+    <script>
+        const dsn_url = 'https://cnodejs.org/api/v1/topics';
+        const reportByImage = (message) => {
+            const img = new Image();
+            img.src = `${dsn_url}?message=${encodeURIComponent(message)}×tamp=${Date.now()}`;
+            
+            // 可选：添加加载成功和失败的回调
+            img.onload = () => console.log('图片上报成功');
+            img.onerror = () => console.log('图片上报失败');
+        }
+        reportByImage("hello")
+    </script>
+</body>
+</html>
