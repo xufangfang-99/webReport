@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        // 运行时错误捕获
+        // onerror
+        // window.onerror = function(msg, url, line, col, error){
+        //     // 收集错误信息
+        //     console.dir(error)
+        //     return false;
+        // }
+        // console.log(fff)
+
+        // window.onunhandledrejection = function(event){
+        //     const {reason} = event;
+        //     console.log(reason);
+        //     // 收集错误信息
+        //     // 上报
+        //     // 阻止默认行为
+        //     return false;
+
+        // }
+        Promise.reject('xufangfang error demo')
+    </script>
+</body>
+</html>
