@@ -215,3 +215,5 @@ MIT License
 
 ### Docker 来编排所有需要使用的服务
 
+- clickhouse
+- kafka
