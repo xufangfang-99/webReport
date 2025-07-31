@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "docker:start": "docker compose -f .devcontainer/docker-compose.yml -p monito-demo up -d",
-    "docker:stop": "docker compose -f .devcontainer/docker-compose.yml monito-demo down"
+    "docker:start": "docker compose -f .devcontainer/docker-compose.yml up -d",
+    "docker:stop": "docker compose -f .devcontainer/docker-compose.yml down"
   },
   "keywords": [],
   "author": "",
