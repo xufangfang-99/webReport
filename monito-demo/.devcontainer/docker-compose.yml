@@ -1,5 +1,4 @@
 # docker 服务内容编排
-version: '1'
 
 # 服务细节内容
 services:
@@ -13,7 +12,7 @@ services:
     environment:
       - KAFKA_CFG_NODE_ID=1
       - KAFKA_CFG_PROCESS_ROLES=broker,controller
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@192.168.31.16:9093
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@localhost:9093
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://0.0.0.0:9094
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://monitor-kafka:9092,EXTERNAL://localhost:9094
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
@@ -31,9 +30,6 @@ services:
       - CLICKHOUSE_USE=DEFAULT
       - CLICKHOUSE_PASSWORD=fangfangclickhouse
       - CLICKHOUSE_DATABASE=default
-
-
-
 
 networks:
   default:
